@@ -11,11 +11,39 @@ import { useNavigate } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useGet, usePost, usePatch } from "@/Hooks/UseApi";
+import { useLazyGet } from "@/Hooks/UseApi";
 import { useNotificationForm } from "@/Hooks/useNotificationForm";
 import type { NotificationFormData } from "@/Validation/notifications";
 import type { Notification } from "@/Types/Notification";
 import { useTranslation } from "react-i18next";
 import { NotificationChannels } from "@/Types/Notification";
+import { useToast } from "@/Hooks/UseToast";
+
+interface EmailDiagnosticsResponse {
+	configured: {
+		host: boolean;
+		port: boolean;
+		address: boolean;
+		password: boolean;
+		user: boolean;
+	};
+	values: {
+		host: string;
+		port: number | string;
+		address: string;
+		user: string;
+		secure: boolean;
+		pool: boolean;
+		ignoreTLS: boolean;
+		requireTLS: boolean;
+		rejectUnauthorized: boolean;
+		connectionHost: string;
+		tlsServername: string;
+	};
+	passwordHint: string;
+	allConfigured: boolean;
+	recommendation: string;
+}
 
 const NotificationsCreatePage = () => {
 	const { t } = useTranslation();
@@ -31,6 +59,8 @@ const NotificationsCreatePage = () => {
 	const { post, loading: isSubmitting } = usePost<NotificationFormData, Notification>();
 	const { patch, loading: isPatching } = usePatch<NotificationFormData, Notification>();
 	const { post: testPost, loading: isTesting } = usePost<NotificationFormData, void>();
+	const { get: getEmailDiagnostics } = useLazyGet<EmailDiagnosticsResponse>();
+	const { toastError } = useToast();
 
 	const { schema, defaults } = useNotificationForm({ data: existingNotification });
 
@@ -88,6 +118,18 @@ const NotificationsCreatePage = () => {
 	const handleTest = async () => {
 		const isValid = await trigger();
 		if (!isValid) return;
+
+		if (watchedType === "email") {
+			const diagnostics = await getEmailDiagnostics("/settings/diagnostics/email");
+			if (!diagnostics?.data?.allConfigured) {
+				toastError(
+					diagnostics?.data?.recommendation ||
+						"Email settings are incomplete. Configure SMTP settings in Settings before testing email notifications."
+				);
+				return;
+			}
+		}
+
 		const data = getValues();
 		await testPost("/notifications/test", data);
 	};

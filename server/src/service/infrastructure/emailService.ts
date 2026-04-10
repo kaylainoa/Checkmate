@@ -113,6 +113,17 @@ export class EmailService implements IEmailService {
 		} else {
 			config = await this.settingsService.getDBSettings();
 		}
+
+		// Validate required email configuration
+		if (!config.systemEmailHost || !config.systemEmailPort || !config.systemEmailAddress || !config.systemEmailPassword) {
+			this.logger.warn({
+				message: "Email configuration incomplete - missing required fields (host, port, address, or password)",
+				service: SERVICE_NAME,
+				method: "sendEmail",
+			});
+			return false;
+		}
+
 		const {
 			systemEmailHost,
 			systemEmailPort,
@@ -151,11 +162,17 @@ export class EmailService implements IEmailService {
 		try {
 			await this.transporter.verify();
 		} catch (error: unknown) {
-			this.logger.warn({
-				message: "Email transporter verification failed",
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			this.logger.error({
+				message: `Email transporter verification failed: ${errorMessage}`,
 				service: SERVICE_NAME,
 				method: "verifyTransporter",
 				stack: error instanceof Error ? error.stack : undefined,
+				details: {
+					host: systemEmailHost,
+					port: systemEmailPort,
+					secure: systemEmailSecure,
+				},
 			});
 			return false;
 		}
@@ -169,11 +186,17 @@ export class EmailService implements IEmailService {
 			});
 			return info?.messageId;
 		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
 			this.logger.error({
-				message: error instanceof Error ? error.message : "Unknown error",
+				message: `Failed to send email: ${errorMessage}`,
 				service: SERVICE_NAME,
 				method: "sendEmail",
 				stack: error instanceof Error ? error.stack : undefined,
+				details: {
+					recipient: to,
+					host: systemEmailHost,
+					port: systemEmailPort,
+				},
 			});
 		}
 	};

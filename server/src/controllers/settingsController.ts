@@ -12,6 +12,7 @@ export interface ISettingsController {
 	getAppSettings(req: Request, res: Response, next: NextFunction): Promise<Response | void>;
 	updateAppSettings(req: Request, res: Response, next: NextFunction): Promise<Response | void>;
 	sendTestEmail(req: Request, res: Response, next: NextFunction): Promise<Response | void>;
+	getEmailConfigDiagnostics(req: Request, res: Response, next: NextFunction): Promise<Response | void>;
 }
 
 class SettingsController implements ISettingsController {
@@ -100,6 +101,14 @@ class SettingsController implements ISettingsController {
 				systemEmailTLSServername,
 			} = req.body;
 
+			// Validate required fields
+			if (!systemEmailHost || !systemEmailPort || !systemEmailAddress || !systemEmailPassword) {
+				throw new AppError({
+					message: "Email configuration incomplete. Please ensure Host, Port, Email Address, and Password are all provided.",
+					status: 400,
+				});
+			}
+
 			const subject = "This is a test email from Checkmate";
 			const context = { testName: "Monitoring System" };
 
@@ -123,13 +132,66 @@ class SettingsController implements ISettingsController {
 			});
 
 			if (!messageId) {
-				throw new AppError({ message: "Failed to send test email.", status: 500 });
+				throw new AppError({
+					message: "Failed to send test email. Please check your email configuration credentials and server settings. If using Gmail, ensure you are using an App Password (not your regular password).",
+					status: 500,
+				});
 			}
 
 			return res.status(200).json({
 				success: true,
 				msg: "Test email sent successfully",
 				data: { messageId },
+			});
+		} catch (error) {
+			next(error);
+		}
+	};
+
+	getEmailConfigDiagnostics = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const dbSettings = await this.settingsService.getDBSettings();
+			
+			// Build diagnostic info without revealing password
+			const diagnostics = {
+				configured: {
+					host: !!dbSettings.systemEmailHost,
+					port: !!dbSettings.systemEmailPort,
+					address: !!dbSettings.systemEmailAddress,
+					password: !!dbSettings.systemEmailPassword,
+					user: !!dbSettings.systemEmailUser,
+				},
+				values: {
+					host: dbSettings.systemEmailHost || "NOT SET",
+					port: dbSettings.systemEmailPort || "NOT SET",
+					address: dbSettings.systemEmailAddress || "NOT SET",
+					user: dbSettings.systemEmailUser || "NOT SET (uses email address)",
+					secure: dbSettings.systemEmailSecure,
+					pool: dbSettings.systemEmailPool,
+					ignoreTLS: dbSettings.systemEmailIgnoreTLS,
+					requireTLS: dbSettings.systemEmailRequireTLS,
+					rejectUnauthorized: dbSettings.systemEmailRejectUnauthorized,
+					connectionHost: dbSettings.systemEmailConnectionHost || "localhost",
+					tlsServername: dbSettings.systemEmailTLSServername || "NOT SET",
+				},
+				passwordHint: dbSettings.systemEmailPassword 
+					? `Password is set (${dbSettings.systemEmailPassword.length} characters)`
+					: "Password is NOT set",
+				allConfigured: !!(
+					dbSettings.systemEmailHost &&
+					dbSettings.systemEmailPort &&
+					dbSettings.systemEmailAddress &&
+					dbSettings.systemEmailPassword
+				),
+				recommendation: dbSettings.systemEmailPassword
+					? "Configuration appears complete. Try sending a test email."
+					: "Email password is missing. Please set it in Settings.",
+			};
+
+			return res.status(200).json({
+				success: true,
+				msg: "Email configuration diagnostics",
+				data: diagnostics,
 			});
 		} catch (error) {
 			next(error);

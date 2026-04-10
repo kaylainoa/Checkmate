@@ -20,7 +20,7 @@ export class EmailProvider implements INotificationProvider {
 
 		if (!notification.address) {
 			this.logger.warn({
-				message: "Missing address",
+				message: "Missing address - cannot send test email",
 				service: SERVICE_NAME,
 				method: "sendTestAlert",
 			});
@@ -38,8 +38,8 @@ export class EmailProvider implements INotificationProvider {
 
 		const messageId = await this.emailService.sendEmail(notification.address, subject, html);
 		if (!messageId) {
-			this.logger.warn({
-				message: "Email test alert failed",
+			this.logger.error({
+				message: "Email test alert failed - check email configuration (credentials, host, port)",
 				service: SERVICE_NAME,
 				method: "sendTestAlert",
 			});
@@ -50,6 +50,11 @@ export class EmailProvider implements INotificationProvider {
 
 	async sendMessage(notification: Notification, message: NotificationMessage): Promise<boolean> {
 		if (!notification.address) {
+			this.logger.warn({
+				message: "Missing email address for notification",
+				service: SERVICE_NAME,
+				method: "sendMessage",
+			});
 			return false;
 		}
 
@@ -67,10 +72,14 @@ export class EmailProvider implements INotificationProvider {
 
 		const messageId = await this.emailService.sendEmail(notification.address, subject, html);
 		if (!messageId) {
-			this.logger.warn({
-				message: "Email notification failed",
+			this.logger.error({
+				message: "Email notification failed - check email configuration (credentials, host, port)",
 				service: SERVICE_NAME,
 				method: "sendMessage",
+				details: {
+					monitorName: message.monitor.name,
+					recipient: notification.address,
+				},
 			});
 			return false;
 		}
@@ -87,12 +96,20 @@ export class EmailProvider implements INotificationProvider {
 				return `Monitor ${message.monitor.name} threshold exceeded`;
 			case "threshold_resolved":
 				return `Monitor ${message.monitor.name} thresholds resolved`;
+			case "escalation":
+				return `🚨 ESCALATION: ${message.monitor.name} - Immediate Action Required`;
 			default:
 				return `Alert: ${message.monitor.name}`;
 		}
 	}
 
 	private async buildEmailFromMessage(message: NotificationMessage): Promise<string | undefined> {
+		// Use escalation template for escalation messages
+		if (message.type === "escalation") {
+			return this.buildEscalationEmail(message);
+		}
+
+		// Use standard template for other message types
 		const context = {
 			title: message.content.title,
 			summary: message.content.summary,
@@ -114,6 +131,39 @@ export class EmailProvider implements INotificationProvider {
 		});
 
 		const html = await this.emailService.buildEmail("unifiedNotificationTemplate", context);
+
+		return html;
+	}
+
+	private async buildEscalationEmail(message: NotificationMessage): Promise<string | undefined> {
+		const context = {
+			title: message.content.title,
+			summary: message.content.summary,
+			escalationReason: message.content.escalationReason || "Monitor has exceeded escalation thresholds",
+			escalationDuration: message.content.escalationDuration,
+			thresholdBreachCount: message.content.thresholdBreachCount,
+			monitorName: message.monitor.name,
+			monitorUrl: message.monitor.url,
+			monitorType: message.monitor.type,
+			monitorStatus: message.monitor.status,
+			thresholds: message.content.thresholds,
+			details: message.content.details,
+			incidentUrl: message.content.incident?.url,
+			dashboardUrl: message.content.dashboardUrl || "/dashboard",
+			escalationContactInfo: message.content.escalationContactInfo,
+		};
+
+		this.logger.info({
+			message: "[DEBUG] Building escalation email",
+			service: SERVICE_NAME,
+			method: "buildEscalationEmail",
+			details: { 
+				monitorName: message.monitor.name,
+				escalationReason: message.content.escalationReason,
+			},
+		});
+
+		const html = await this.emailService.buildEmail("escalationNotificationTemplate", context);
 
 		return html;
 	}
