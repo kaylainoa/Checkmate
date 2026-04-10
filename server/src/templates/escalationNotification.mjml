@@ -1,0 +1,228 @@
+<mjml>
+	<mj-head>
+		<mj-font
+			name="Roboto"
+			href="https://fonts.googleapis.com/css?family=Roboto:300,500"
+		></mj-font>
+		<mj-attributes>
+			<mj-all font-family="Roboto, Helvetica, sans-serif"></mj-all>
+			<mj-text
+				font-weight="300"
+				font-size="16px"
+				color="#616161"
+				line-height="24px"
+			></mj-text>
+			<mj-section padding="0px"></mj-section>
+		</mj-attributes>
+	</mj-head>
+	<mj-body>
+		<!-- Critical Header Banner -->
+		<mj-section padding="0px" background-color="#fee2e2">
+			<mj-column width="100%">
+				<mj-text
+					align="center"
+					font-weight="500"
+					padding="16px"
+					font-size="14px"
+					color="#dc2626"
+					text-transform="uppercase"
+					letter-spacing="1px"
+				>
+					⚠️ ESCALATION ALERT - IMMEDIATE ACTION REQUIRED ⚠️
+				</mj-text>
+			</mj-column>
+		</mj-section>
+
+		<!-- Main Content -->
+		<mj-section padding="20px 0">
+			<mj-column width="100%">
+				<mj-text
+					align="left"
+					font-size="10px"
+					color="#999"
+				>
+					Escalation from Checkmate Service
+				</mj-text>
+			</mj-column>
+			<mj-column
+				width="100%"
+				padding-top="20px"
+			>
+				<mj-text
+					align="center"
+					font-weight="500"
+					padding="0px"
+					font-size="20px"
+					color="#dc2626"
+				>
+					{{ title }}
+				</mj-text>
+				<mj-divider
+					border-width="3px"
+					border-color="#dc2626"
+				></mj-divider>
+			</mj-column>
+		</mj-section>
+
+		<!-- Alert Details -->
+		<mj-section>
+			<mj-column width="100%">
+				<mj-text>
+					<p><strong>This is an escalation notification because:</strong></p>
+					<p>{{ escalationReason }}</p>
+				</mj-text>
+			</mj-column>
+		</mj-section>
+
+		<!-- Incident Information -->
+		<mj-section background-color="#fafafa" padding="20px">
+			<mj-column width="100%">
+				<mj-text
+					font-weight="500"
+					font-size="16px"
+					color="#000"
+					margin="0 0 16px 0"
+				>
+					📋 Incident Details
+				</mj-text>
+				<mj-text margin="0">
+					<p><b>Monitor:</b> {{ monitorName }}</p>
+					<p><b>URL:</b> {{ monitorUrl }}</p>
+					<p><b>Type:</b> {{ monitorType }}</p>
+					<p><b>Current Status:</b> <span style="color: #dc2626; font-weight: bold;">{{ monitorStatus }}</span></p>
+					{{#if escalationDuration}}
+					<p><b>Duration:</b> {{ escalationDuration }}</p>
+					{{/if}}
+					{{#if thresholdBreachCount}}
+					<p><b>Failed Checks:</b> {{ thresholdBreachCount }} consecutive failures</p>
+					{{/if}}
+				</mj-text>
+			</mj-column>
+		</mj-section>
+
+		<!-- Summary -->
+		<mj-section padding="20px">
+			<mj-column width="100%">
+				<mj-text
+					font-weight="500"
+					font-size="16px"
+					color="#000"
+					margin="0 0 12px 0"
+				>
+					📝 Summary
+				</mj-text>
+				<mj-text>
+					<p>{{ summary }}</p>
+				</mj-text>
+			</mj-column>
+		</mj-section>
+
+		<!-- Thresholds (if applicable) -->
+		{{#if thresholds}}
+		<mj-section background-color="#fafafa" padding="20px">
+			<mj-column width="100%">
+				<mj-text
+					font-weight="500"
+					font-size="16px"
+					color="#000"
+					margin="0 0 12px 0"
+				>
+					⚡ Threshold Breaches
+				</mj-text>
+				<mj-text margin="0">
+					<ul>
+						{{#each thresholds}}
+						<li>
+							<b>{{ metric }}:</b> {{ formattedValue }} (threshold: {{ threshold }}{{ unit }})
+						</li>
+						{{/each}}
+					</ul>
+				</mj-text>
+			</mj-column>
+		</mj-section>
+		{{/if}}
+
+		<!-- Additional Details (if applicable) -->
+		{{#if details}}
+		<mj-section padding="20px">
+			<mj-column width="100%">
+				<mj-text
+					font-weight="500"
+					font-size="16px"
+					color="#000"
+					margin="0 0 12px 0"
+				>
+					ℹ️ Additional Details
+				</mj-text>
+				<mj-text margin="0">
+					<ul>
+						{{#each details}}
+						<li>{{ this }}</li>
+						{{/each}}
+					</ul>
+				</mj-text>
+			</mj-column>
+		</mj-section>
+		{{/if}}
+
+		<!-- Action Required -->
+		<mj-section background-color="#fef2f2" padding="20px" border="2px solid #dc2626">
+			<mj-column width="100%">
+				<mj-text
+					font-weight="500"
+					font-size="14px"
+					color="#dc2626"
+					margin="0 0 12px 0"
+				>
+					🚨 ACTION REQUIRED
+				</mj-text>
+				<mj-text
+					margin="0"
+					color="#7f1d1d"
+				>
+					<p>This escalation indicates a critical issue that requires immediate attention. Please investigate and take corrective action as soon as possible.</p>
+					{{#if escalationContactInfo}}
+					<p><b>Escalation Contact:</b> {{ escalationContactInfo }}</p>
+					{{/if}}
+				</mj-text>
+			</mj-column>
+		</mj-section>
+
+		<!-- CTA Buttons -->
+		<mj-section padding="20px">
+			<mj-column width="50%">
+				<mj-button
+					background-color="#dc2626"
+					href="{{incidentUrl}}"
+					width="100%"
+				>
+					View Incident
+				</mj-button>
+			</mj-column>
+			<mj-column width="50%">
+				<mj-button
+					background-color="#1570EF"
+					href="{{dashboardUrl}}"
+					width="100%"
+				>
+					Go to Dashboard
+				</mj-button>
+			</mj-column>
+		</mj-section>
+
+		<!-- Footer -->
+		<mj-section padding="20px" background-color="#f5f5f5">
+			<mj-column width="100%">
+				<mj-divider border-color="#E0E0E0"></mj-divider>
+				<mj-text
+					font-size="12px"
+					color="#999"
+					align="center"
+				>
+					<p>This is an automated escalation notification from Checkmate. Please do not reply to this email.</p>
+					<p>If you believe you received this in error, please contact your system administrator.</p>
+				</mj-text>
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

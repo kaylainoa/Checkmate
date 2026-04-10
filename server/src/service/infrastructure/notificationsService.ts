@@ -112,8 +112,12 @@ export class NotificationsService implements INotificationsService {
 		}
 	};
 
-	private sendNotifications = async (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => {
-		const notificationIds = monitor.notifications ?? [];
+	private sendNotificationsToIds = async (
+		notificationIds: string[],
+		monitor: Monitor,
+		monitorStatusResponse: MonitorStatusResponse,
+		decision: MonitorActionDecision
+	) => {
 		const notifications = await this.notificationsRepository.findNotificationsByIds(notificationIds);
 
 		// Build notification message once for all notifications
@@ -137,13 +141,67 @@ export class NotificationsService implements INotificationsService {
 		return succeeded === notifications.length;
 	};
 
-	handleNotifications = async (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => {
-		if (!decision.shouldSendNotification) {
+	private sendNotifications = async (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => {
+		const notificationIds = monitor.notifications ?? [];
+		return await this.sendNotificationsToIds(notificationIds, monitor, monitorStatusResponse, decision);
+	};
+
+	private shouldSendEscalation = (monitor: Monitor) => {
+		if (monitor.status !== "down") {
 			return false;
 		}
 
-		// Send notifications based on decision
-		return await this.sendNotifications(monitor, monitorStatusResponse, decision);
+		if (!monitor.downSince) {
+			return false;
+		}
+
+		if (!monitor.escalationNotifications?.length) {
+			return false;
+		}
+
+		const referenceTimestamp = monitor.escalationNotifiedAt ?? monitor.downSince;
+		const referenceTime = Date.parse(referenceTimestamp);
+		if (Number.isNaN(referenceTime)) {
+			return false;
+		}
+
+		const escalationAfterMinutes = monitor.escalationAfterMinutes ?? 1;
+		return Date.now() - referenceTime >= escalationAfterMinutes * 60_000;
+	};
+
+	handleNotifications = async (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => {
+		let sent = false;
+
+		if (decision.shouldSendNotification) {
+			sent = await this.sendNotifications(monitor, monitorStatusResponse, decision);
+		}
+
+		if (!this.shouldSendEscalation(monitor)) {
+			return sent;
+		}
+
+		const escalationDecision: MonitorActionDecision = {
+			...decision,
+			shouldSendNotification: true,
+			notificationReason: "escalation",
+		};
+
+		const escalationSent = await this.sendNotificationsToIds(
+			monitor.escalationNotifications ?? [],
+			monitor,
+			monitorStatusResponse,
+			escalationDecision
+		);
+
+		if (escalationSent) {
+			const escalationNotifiedAt = new Date().toISOString();
+			await this.monitorsRepository.updateById(monitor.id, monitor.teamId, {
+				escalationNotifiedAt,
+			});
+			monitor.escalationNotifiedAt = escalationNotifiedAt;
+		}
+
+		return sent || escalationSent;
 	};
 
 	sendTestNotification = async (notification: Partial<Notification>) => {

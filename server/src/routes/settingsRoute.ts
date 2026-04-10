@@ -14,6 +14,7 @@ class SettingsRoutes {
 
 	initRoutes() {
 		this.router.get("/", this.settingsController.getAppSettings);
+		this.router.get("/diagnostics/email", this.settingsController.getEmailConfigDiagnostics);
 		this.router.patch("/", isAllowed(["admin", "superadmin"]), this.settingsController.updateAppSettings);
 		this.router.post("/test-email", isAllowed(["admin", "superadmin"]), this.settingsController.sendTestEmail);
 	}

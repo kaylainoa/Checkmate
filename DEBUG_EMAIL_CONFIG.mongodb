@@ -1,0 +1,4 @@
+// Debug script to check email configuration
+// Run this in MongoDB to see what's stored
+
+db.appsettings.findOne({})

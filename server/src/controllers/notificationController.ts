@@ -38,6 +38,13 @@ class NotificationController implements INotificationController {
 			const success = await this.notificationsService.sendTestNotification(notification);
 
 			if (!success) {
+				if (notification.type === "email") {
+					throw new AppError({
+						message:
+							"Email notification test failed. Configure SMTP settings in Settings first, including host, port, sender address, and password.",
+						status: 500,
+					});
+				}
 				throw new AppError({ message: "Sending notification failed", status: 500 });
 			}
 
